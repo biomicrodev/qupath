@@ -71,6 +71,13 @@ public class PathTools {
 			QuPathResources.getString("Tools.ellipse"),
 			createIcon(PathIcons.ELLIPSE_TOOL));
 	/**
+	 * Bow drawing tool
+	 */
+	public static final PathTool BOW = createTool(
+			PathToolEventHandlers.createBowEventHandler(),
+			QuPathResources.getString("Tools.bow"),
+			createIcon(PathIcons.BOW_TOOL));
+	/**
 	 * Line drawing tool
 	 */
 	public static final PathTool LINE = createTool(
@@ -140,7 +147,7 @@ public class PathTools {
 	
 	
 	private static List<PathTool> ALL_TOOLS = Arrays.asList(
-			MOVE, RECTANGLE, ELLIPSE, LINE, POLYGON, POLYLINE, BRUSH, POINTS
+			MOVE, RECTANGLE, ELLIPSE, BOW, LINE, POLYGON, POLYLINE, BRUSH, POINTS
 			);
 	
 	private static Node createIcon(PathIcons icon) {

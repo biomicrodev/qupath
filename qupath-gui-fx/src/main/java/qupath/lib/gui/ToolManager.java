@@ -62,7 +62,7 @@ public class ToolManager {
 	private ObjectProperty<PathTool> selectedToolProperty = new SimpleObjectProperty<>(PathTools.MOVE);
 	
 	private ObservableList<PathTool> tools = FXCollections.observableArrayList(
-			PathTools.MOVE, PathTools.RECTANGLE, PathTools.ELLIPSE, PathTools.LINE_OR_ARROW,
+			PathTools.MOVE, PathTools.RECTANGLE, PathTools.ELLIPSE, PathTools.LINE_OR_ARROW, PathTools.BOW,
 			PathTools.POLYGON, PathTools.POLYLINE, PathTools.BRUSH, PathTools.POINTS
 			);
 	

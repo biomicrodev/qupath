@@ -183,6 +183,47 @@ public class ROIs {
 	public static ROI createLineROI(double x, double y, ImagePlane plane) {
 		return createLineROI(x, y, x, y, plane);
 	}
+
+	/**
+	 * Create a bow ROI with start and end coordinates.
+	 *
+	 * @param x the start x coordinate
+	 * @param y the start y coordinate
+	 * @param x2 the end x coordinate
+	 * @param y2 the end y coordinate
+	 * @param plane the plane containing the ROI
+	 * @return a new line ROI
+	 */
+	public static ROI createBowROI(double x, double y, double x2, double y2, ImagePlane plane) {
+		return new BowROI(x, y, x2, y2, plane);
+	}
+
+	/**
+	 * Create a bow ROI with start and end coordinates on the default image plane.
+	 *
+	 * @param x the start x coordinate
+	 * @param y the start y coordinate
+	 * @param x2 the end x coordinate
+	 * @param y2 the end y coordinate
+	 * @return a new line ROI
+	 * @see ImagePlane#getDefaultPlane()
+	 * @since v0.6.0
+	 */
+	public static ROI createBowROI(double x, double y, double x2, double y2) {
+		return createBowROI(x, y, x2, y2, ImagePlane.getDefaultPlane());
+	}
+
+	/**
+	 * Create a ROI representing a bow with zero length.
+	 *
+	 * @param x the start and end x coordinate
+	 * @param y the start and end y coordinate
+	 * @param plane the plane containing the ROI
+	 * @return a new line ROI
+	 */
+	public static ROI createBowROI(double x, double y, ImagePlane plane) {
+		return createBowROI(x, y, x, y, plane);
+	}
 	
 	/**
 	 * Create an empty points ROI.

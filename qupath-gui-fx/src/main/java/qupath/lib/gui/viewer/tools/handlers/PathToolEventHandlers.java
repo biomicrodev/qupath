@@ -16,6 +16,10 @@ public class PathToolEventHandlers {
 	public static EventHandler<MouseEvent> createEllipseEventHandler() {
 		return new EllipseToolEventHandler();
 	}
+
+	public static EventHandler<MouseEvent> createBowEventHandler() {
+		return new BowToolEventHandler();
+	}
 	
 	public static EventHandler<MouseEvent> createLineEventHandler() {
 		return new LineToolEventHandler();

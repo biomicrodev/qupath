@@ -113,6 +113,8 @@ public class RoiEditor {
 			adjuster = new PolygonHandleAdjuster((PolygonROI)pathROI);
 		else if (pathROI instanceof PolylineROI)
 			adjuster = new PolylineHandleAdjuster((PolylineROI)pathROI);
+		else if (pathROI instanceof BowROI)
+			adjuster = new BowHandleAdjuster((BowROI)pathROI);
 		else if (pathROI instanceof LineROI)
 			adjuster = new LineHandleAdjuster((LineROI)pathROI);
 		else if (pathROI instanceof PointsROI)
@@ -925,8 +927,92 @@ public class RoiEditor {
 		}
 
 	}
-		
-	
+
+	class BowHandleAdjuster extends RoiHandleAdjuster<BowROI> {
+		private BowROI roi;
+		private List<MutablePoint> handles;
+		private MutablePoint activeHandle = null;
+		private MutablePoint inactiveHandle = null;
+
+		BowHandleAdjuster(BowROI roi) {
+			this.roi = roi;
+			handles = new ArrayList<>(2);
+			ensureHandlesUpdated();
+		}
+
+		@Override
+		MutablePoint grabHandle(double x, double y, double maxDist, boolean shiftDown) {
+			int activeHandleIndex = getClosestHandleIndex(handles, x, y, maxDist);
+			if (activeHandleIndex >= 0) {
+				activeHandle = handles.get(activeHandleIndex);
+				inactiveHandle = handles.get(1 - activeHandleIndex);
+			} else {
+				activeHandle = null;
+				inactiveHandle = null;
+			}
+			return activeHandle;
+		}
+
+		@Override
+		BowROI updateActiveHandleLocation(double xNew, double yNew, boolean shiftDown) {
+			if (activeHandle == null)
+				return roi;
+
+			// Update x & y
+			// If pressing shift, constrain angles
+			double x = inactiveHandle.getX();
+			double y = inactiveHandle.getY();
+			if (shiftDown) {
+				double w = x - xNew;
+				double h = y - yNew;
+				if (w != 0 && h != 0) {
+					int theta = (int) Math.round(Math.atan2(h, w) / Math.PI * 4);
+					if (theta % 2 == 0) {
+						if (theta % 4 == 0)
+							h = 0;
+						else
+							w = 0;
+					} else {
+						double len = Math.min(Math.abs(w), Math.abs(h));
+						w = Math.signum(w) * len;
+						h = Math.signum(h) * len;
+					}
+				}
+				xNew = x - w;
+				yNew = y - h;
+			}
+
+			activeHandle.setLocation(xNew, yNew);
+
+			roi = new BowROI(
+					handles.get(0).getX(),
+					handles.get(0).getY(),
+					handles.get(1).getX(),
+					handles.get(1).getY(),
+					roi.getImagePlane()
+			);
+//			roi = new BowROI(inactiveHandle.getX(), inactiveHandle.getY(), activeHandle.getX(), activeHandle.getY(), roi.getC(), roi.getZ(), roi.getT());
+			return roi;
+		}
+
+		@Override
+		List<MutablePoint> getHandles() {
+			return handles;
+		}
+
+		@Override
+		void ensureHandlesUpdated() {
+			handles.clear();
+			handles.add(new MutablePoint(roi.getHeadX(), roi.getHeadY()));
+			handles.add(new MutablePoint(roi.getTailX(), roi.getTailY()));
+		}
+
+		@Override
+		public BowROI requestNewHandle(double x, double y) {
+			return roi; // Can't add a new handle to a line ROI
+		}
+	}
+
 	/**
 	 * Really basic rectangle class to avoid AWT dependency.
 	 * 

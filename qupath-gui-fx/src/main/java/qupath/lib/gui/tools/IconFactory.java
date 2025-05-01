@@ -45,8 +45,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.shape.CubicCurveTo;
-import javafx.scene.shape.QuadCurve;
+import javafx.scene.shape.*;
 import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextBoundsType;
 import javafx.scene.transform.Transform;
@@ -66,16 +65,6 @@ import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.ClosePath;
-import javafx.scene.shape.Ellipse;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
-import javafx.scene.shape.QuadCurveTo;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.Shape;
 import javafx.scene.text.Text;
 import qupath.lib.geom.Point2;
 import qupath.lib.gui.QuPathGUI;
@@ -83,10 +72,7 @@ import qupath.lib.gui.prefs.PathPrefs;
 import qupath.lib.gui.viewer.DownsampledShapeCache;
 import qupath.lib.objects.PathObject;
 import qupath.lib.objects.PathObjectTools;
-import qupath.lib.roi.EllipseROI;
-import qupath.lib.roi.LineROI;
-import qupath.lib.roi.RoiTools;
-import qupath.lib.roi.RectangleROI;
+import qupath.lib.roi.*;
 import qupath.lib.roi.interfaces.ROI;
 
 /**
@@ -241,6 +227,8 @@ public class IconFactory {
 			return i -> new DuplicatableNode(() -> drawEllipseIcon(i));
 		}
 
+		static IntFunction<Node> bowToolIcon() { return i -> new DuplicatableNode(() -> drawBowIcon(i)); }
+
 		static IntFunction<Node> polygonToolIcon() {
 			return i -> new DuplicatableNode(() -> drawPolygonIcon(i));
 		}
@@ -298,6 +286,8 @@ public class IconFactory {
 									ARROW_START_TOOL(IconSuppliers.arrowToolIcon("<")),
 									ARROW_END_TOOL(IconSuppliers.arrowToolIcon(">")),
 									ARROW_DOUBLE_TOOL(IconSuppliers.arrowToolIcon("<>")),
+
+									BOW_TOOL(IconSuppliers.bowToolIcon()),
 
 									BRUSH_TOOL(IconSuppliers.brushToolIcon()),
 
@@ -397,6 +387,13 @@ public class IconFactory {
 		}
 		
 	};
+
+	private static Node drawBowIcon(int size) {
+		var text = new Text("B");
+		text.setTextAlignment(TextAlignment.CENTER);
+		bindColorPropertyToRGB(text.fillProperty(), PathPrefs.colorDefaultObjectsProperty());
+		return text;
+	}
 
 	private static Node createLineOrArrowIcon(int size, String cap) {
 		return new DuplicatableNode(() -> drawLineOrArrowIcon(size, size, cap));
@@ -907,6 +904,20 @@ public class IconFactory {
 			ellipse.setStroke(color);
 			ellipse.setFill(null);
 			return ellipse;
+		} else if (roi instanceof BowROI) {
+			// this method makes a scaled-down representation of the ROI to show next to the ROI entry in the list of
+			// annotations
+			BowROI scaledBow = (BowROI) roi.scale(scale, scale);
+			List<Point2> path = scaledBow.computePoints();
+			Polyline polyline = new Polyline();
+			// polyline expects coordinates is a collapsed list of coordinates
+			for (Point2 p : path) {
+				polyline.getPoints().add(p.getX());
+				polyline.getPoints().add(p.getY());
+			}
+			polyline.setStroke(color);
+			polyline.setFill(null);
+			return polyline;
 		} else if (roi instanceof LineROI) {
 			LineROI l = (LineROI)roi;
 			double xMin = Math.min(l.getX1(), l.getX2());
