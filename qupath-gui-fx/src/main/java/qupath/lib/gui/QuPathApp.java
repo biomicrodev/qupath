@@ -36,12 +36,16 @@ import java.util.Objects;
 import java.util.Optional;
 
 import javafx.beans.property.BooleanProperty;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
+import javafx.stage.Modality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +55,7 @@ import javafx.stage.Stage;
 import qupath.lib.common.GeneralTools;
 import qupath.fx.dialogs.Dialogs;
 import qupath.lib.gui.commands.Commands;
+import qupath.lib.gui.localization.QuPathResources;
 import qupath.lib.gui.prefs.PathPrefs;
 import qupath.lib.projects.Project;
 import qupath.lib.projects.ProjectIO;
@@ -76,7 +81,7 @@ public class QuPathApp extends Application {
 
 		// Delay logging until here, so that the UI has initialized and can display the message
 		QuPathLaunchParameters params = QuPathLaunchParameters.parse(getParameters());
-		logger.info("Starting QuPath with parameters: " + params.getRawParameters());
+        logger.info("Starting QuPath with parameters: {}", params.getRawParameters());
 
 		Optional<String> projectPath = params.getProjectParameter();
 		projectPath.ifPresent(s -> openProjectOrLogException(qupath, s));
@@ -87,6 +92,10 @@ public class QuPathApp extends Application {
 		tryToRegisterOpenFilesHandler(qupath);
 		
 		if (!params.requestQuietLaunch()) {
+
+			if (showLicenseMessage.get()) {
+				showLicenseMessage(qupath);
+			}
 
 			if (PathPrefs.showStartupMessageProperty().get()) {
 				showWelcomeMessage(qupath);
@@ -109,22 +118,56 @@ public class QuPathApp extends Application {
 		
 	}
 
+	private static final BooleanProperty showLicenseMessage = PathPrefs.showLicenseMessageOnStartupProperty();
+
+	private static void showLicenseMessage(QuPathGUI qupath) {
+		var labelLicense = new Label(QuPathResources.getString("Startup.license"));
+		labelLicense.setTextAlignment(TextAlignment.CENTER);
+
+		var hyperlink = new Hyperlink(QuPathResources.getString("Startup.showLicenses"));
+		hyperlink.setOnAction(e -> qupath.getCommonActions().SHOW_LICENSE.handle(e));
+
+		var labelContent = new Label(QuPathResources.getString("Startup.use"));
+		labelContent.setTextAlignment(TextAlignment.CENTER);
+		labelContent.setStyle("-fx-font-weight: bold;");
+
+		var cbAskAgain = new CheckBox(QuPathResources.getString("Startup.dontShowAgain"));
+		cbAskAgain.setSelected(!showLicenseMessage.get());
+		cbAskAgain.setPadding(new Insets(5, 0, 0, 0));
+		var content = new VBox(labelLicense, hyperlink, labelContent, cbAskAgain);
+
+		content.setSpacing(5);
+		content.setAlignment(Pos.CENTER);
+		var accept = new ButtonType(QuPathResources.getString("Startup.accept"), ButtonBar.ButtonData.YES);
+		var exit = new ButtonType(QuPathResources.getString("Startup.exit"), ButtonBar.ButtonData.NO);
+		if (!Dialogs.builder()
+			.content(content)
+			.modality(Modality.APPLICATION_MODAL)
+			.title(QuPathResources.getString("Startup.title"))
+			.buttons(accept, exit)
+			.showAndWait()
+			.orElse(exit).equals(accept)) {
+			System.exit(0);
+		}
+		showLicenseMessage.set(!cbAskAgain.isSelected());
+	}
+
 	private static final BooleanProperty promptForExtensions =
 			PathPrefs.createPersistentPreference("showExtensionManagerOnStartup", true);
 
 	private static void promptToOpenExtensionManager(QuPathGUI qupath) {
-		var labelContent = new Label("Add extra features by installing optional extensions.");
-		var hyperlink = new Hyperlink("Find out more (website)");
+		var labelContent = new Label(QuPathResources.getString("Startup.extensions.prompt"));
+		var hyperlink = new Hyperlink(QuPathResources.getString("Startup.extensions.more"));
 		hyperlink.setOnAction(e -> QuPathGUI.openInBrowser(Urls.getExtensionsDocsUrl()));
-		var cbAskAgain = new CheckBox("Remind me next time");
+		var cbAskAgain = new CheckBox(QuPathResources.getString("Startup.extensions.remindMe"));
 		cbAskAgain.setSelected(promptForExtensions.get());
 		var content = new VBox(labelContent, hyperlink, cbAskAgain);
 		content.setSpacing(5);
 		content.setAlignment(Pos.CENTER);
 		if (Dialogs.builder()
-				.headerText("Do you want to open QuPath's Extension Manager?")
+				.headerText(QuPathResources.getString("Startup.extensions.header"))
 				.content(content)
-				.title("Extensions")
+				.title(QuPathResources.getString("Startup.extensions.title"))
 				.buttons(ButtonType.YES, ButtonType.NO)
 				.showAndWait()
 				.orElse(ButtonType.NO) == ButtonType.YES) {
@@ -267,7 +310,7 @@ public class QuPathApp extends Application {
 	
 	private static class QuPathOpenFilesHandler implements OpenFilesHandler {
 		
-		private QuPathGUI qupath;
+		private final QuPathGUI qupath;
 		
 		private QuPathOpenFilesHandler(QuPathGUI qupath) {
 			Objects.requireNonNull(qupath, "QuPathGUI must not be null!");

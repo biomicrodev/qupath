@@ -75,10 +75,18 @@ Some things may be added, some things may be removed, and some things may look d
 * Channel names can now be set for all fluorescence images, even if they are RGB (https://github.com/qupath/qupath/pull/1659)
   * Note that channel colors still only be set for non-RGB images
 * Improved ImageJ integration (https://github.com/qupath/qupath/pull/1676 https://github.com/qupath/qupath/pull/1677)
+  * Includes new preference to make ImageJ window 'always on top'
 * 'Selection mode' now supports 'deselecting' objects by pressing the 'Alt' key (https://github.com/qupath/qupath/issues/1704)
 * More 'filter boxes' in the user interface to find things in long lists or tables (https://github.com/qupath/qupath/pull/1742)
 * Color deconvolution support for non-8-bit images (https://github.com/qupath/qupath/pull/1807)
 * Optionally use viewer gamma when exporting rendered images (https://github.com/qupath/qupath/pull/1849)
+* Save project from command line when `-s` parameter set (https://github.com/qupath/qupath/pull/1859)
+* Add possibility to set codec options in OMEPyramidWriter (https://github.com/qupath/qupath/pull/1857)
+* Add dock button to keep project description pane open (https://github.com/qupath/qupath/pull/1856)
+* Add support for OME XML shapes (https://github.com/qupath/qupath/pull/1848)
+* Combine viewer-related toolbar buttons under one menu button (https://github.com/qupath/qupath/pull/1841)
+* Add placeholder text to empty viewers (https://github.com/qupath/qupath/pull/1888)
+  * This can be turned of with a preference (https://github.com/qupath/qupath/pull/1908)
 
 
 ### Experimental features
@@ -111,6 +119,8 @@ They may change or be removed in future versions.
 * QuPath ignores OpenSlide when opening some images from the command line outside a project (but they work properly in the UI) (https://github.com/qupath/qupath/issues/1758)
 * Exporting specific channels with OMEPyramidWriter includes wrong channel names (https://github.com/qupath/qupath/issues/1754)
 * Screenshots created in QuPath can also include the screenshot menu (https://github.com/qupath/qupath/issues/1854)
+* Setting color deconvolution stains from a workflow script lost some precision (https://github.com/qupath/qupath/pull/1887)
+* Point annotations can sometimes move unexpectedly all together (https://github.com/qupath/qupath/issues/1872)
 
 ### API changes
 * New `Map<String, String> getMetadata()` method added to `PathObject`, `Project` and `ProjectImageEntry` (https://github.com/qupath/qupath/pull/1587)
@@ -142,10 +152,10 @@ They may change or be removed in future versions.
   * Extension writers can use either Groovy or Kotlin - but may need to make some changes to their build scripts
 
 ### Dependency updates
-* Bio-Formats 8.1.1
+* Bio-Formats 8.2.0
 * Commonmark 0.24.0
 * ControlsFX 11.2.2
-* DeepJavaLibrary 0.31.1
+* DeepJavaLibrary 0.33.0
 * Groovy 4.0.26
 * Gson 2.13.1
 * Guava 33.4.6-jre
@@ -161,6 +171,7 @@ They may change or be removed in future versions.
 * qupath-bioimageio-spec 0.2.0
 * qupath-fxtras 0.12.0
 * qupath-javadoc-viewer 0.1.2
+* OMEZarrReader 0.6.0
 * OpenCV 4.10.0
 * OpenJDK 21
 * RichTextFX 0.11.5

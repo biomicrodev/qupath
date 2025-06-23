@@ -1,8 +1,8 @@
 [versions]
 
-bioformats      = "8.1.1"
+bioformats      = "8.2.0"
 bioimageIoSpec  = "0.2.0"
-omeZarrReader   = "0.5.2"
+omeZarrReader   = "0.6.0"
 blosc           = "1.21.6+01"
 
 commonmark      = "0.24.0"
@@ -10,7 +10,7 @@ commonsMath3    = "3.6.1"
 commonsText     = "1.10.0"
 controlsFX      = "11.2.2"
 
-deepJavaLibrary = "0.32.0"
+deepJavaLibrary = "0.33.0"
 
 groovy          = "4.0.26"
 gson            = "2.13.1"
@@ -38,14 +38,17 @@ junit           = "5.11.0"
 logback         = "1.5.8"
 logviewer       = "0.2.0"
 
-extensionmanager= "1.0.0-rc4"
+extensionmanager= "1.0.0-rc5"
 
 javadocviewer   = "0.1.2"
 
 openslide       = "4.0.0.6"
 
 picocli         = "4.7.7"
-qupath-fxtras   = "0.1.7"
+
+qupath-fxtras   = "0.2.0-rc1"
+qupath-training = "0.1.0-rc2"
+qupath-djl      = "0.4.0-20250619.120454-1" # UPDATE TO TAGGED RELEASE WHEN AVAILABLE!
 
 richtextfx      = "0.11.5"
 
@@ -91,6 +94,9 @@ omeZarrReader = { module = "ome:OMEZarrReader",                 version.ref = "o
 picocli       = { module = "info.picocli:picocli",              version.ref = "picocli" }
 
 qupath-fxtras = { module = "io.github.qupath:qupath-fxtras",    version.ref = "qupath-fxtras" }
+
+qupath-training = { module = "io.github.qupath:qupath-extension-training", version.ref = "qupath-training" }
+qupath-djl    = { module = "io.github.qupath:qupath-extension-djl", version.ref = "qupath-djl" }
 
 richtextfx    = { module = "org.fxmisc.richtext:richtextfx",    version.ref = "richtextfx" }
 

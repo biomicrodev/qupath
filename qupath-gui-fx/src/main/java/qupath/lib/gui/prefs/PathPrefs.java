@@ -4,7 +4,7 @@
  * %%
  * Copyright (C) 2014 - 2016 The Queen's University of Belfast, Northern Ireland
  * Contact: IP Management (ipmanagement@qub.ac.uk)
- * Copyright (C) 2018 - 2023 QuPath developers, The University of Edinburgh
+ * Copyright (C) 2018 - 2025 QuPath developers, The University of Edinburgh
  * %%
  * QuPath is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -42,6 +43,7 @@ import java.util.function.Function;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.property.*;
@@ -61,7 +63,6 @@ import qupath.lib.common.Version;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.localization.QuPathResources;
 import qupath.lib.objects.classes.PathClass;
-import qupath.lib.projects.ProjectIO;
 
 /**
  * Central storage of QuPath preferences.
@@ -318,13 +319,24 @@ public class PathPrefs {
 	
 	private static BooleanProperty showStartupMessage = createPersistentPreference("showStartupMessage", true);
 	
-	
+
 	/**
 	 * Show a startup message when QuPath is launched.
 	 * @return
 	 */
 	public static BooleanProperty showStartupMessageProperty() {
 		return showStartupMessage;
+	}
+
+
+	private static BooleanProperty showLicenseMessageProperty = createPersistentPreference("showLicenseMessage", true);
+
+	/**
+	 * Show a startup message about license when QuPath is launched.
+	 * @return
+	 */
+	public static BooleanProperty showLicenseMessageOnStartupProperty() {
+		return showLicenseMessageProperty;
 	}
 
 
@@ -766,38 +778,54 @@ public class PathPrefs {
 	}
 	
 	
-	private static ObservableList<URI> recentProjects = createRecentProjectsList(5);
-	
-	private static ObservableList<URI> createRecentProjectsList(int maxRecentProjects) {
+	private static final ObservableList<URI> recentProjects = createPersistentUriList("recentProject", 8);
+
+	/**
+	 * Create an observable list backed by preferences to store URIs.
+	 * This is intended for us
+	 *
+	 * @param key the preference key
+	 * @param maxUris the maximum number of URIs to store in the preferences.
+	 *                If the list contains more URIs, these will not be included.
+	 *                Note that this should be between 1 and 1024.
+	 * @param extensions optional array of extensions to filter valid URIs
+	 * @return an observable list
+	 * @throws IllegalArgumentException if the maximum number of URIs is not a positive integer &leq; 1024.
+	 */
+	public static ObservableList<URI> createPersistentUriList(String key, int maxUris, String... extensions) throws IllegalArgumentException {
+		if (maxUris <= 0 || maxUris > 1024) {
+			throw new IllegalArgumentException("Max URIs must be between 1 and 1024");
+		}
 		// Try to load the recent projects
-		ObservableList<URI> recentProjects = FXCollections.observableArrayList();
-		for (int i = 0; i < maxRecentProjects; i++) {
-			String project = getUserPreferences().get("recentProject" + i, null);
-			if (project == null || project.length() == 0)
+		ObservableList<URI> recentUris = FXCollections.observableArrayList();
+		var prefs = MANAGER.getPreferences();
+		var exts = Arrays.stream(extensions).map(String::toLowerCase).collect(Collectors.toSet());
+		for (int i = 0; i < maxUris; i++) {
+			String nextUri = prefs.get(key + i, null);
+			if (nextUri == null || nextUri.isEmpty())
 				break;
 			// Only allow project files
-			if (!(project.toLowerCase().endsWith(ProjectIO.getProjectExtension()))) {
+			var lowerUri = nextUri.toLowerCase();
+			if (!exts.isEmpty() && exts.stream().noneMatch(lowerUri::endsWith)) {
 				continue;
 			}
 			try {
-				recentProjects.add(GeneralTools.toURI(project));
+				recentUris.add(GeneralTools.toURI(nextUri));
 			} catch (URISyntaxException e) {
-				logger.warn("Unable to parse URI from " + project, e);
+                logger.warn("Unable to parse URI from {}", nextUri, e);
 			}
 		}
 		// Add a listener to keep storing the preferences, as required
-		recentProjects.addListener((Change<? extends URI> c) -> {
-			int i = 0;
-			for (URI project : recentProjects) {
-				getUserPreferences().put("recentProject" + i, project.toString());
-				i++;
-			}
-			while (i < maxRecentProjects) {
-				getUserPreferences().put("recentProject" + i, "");
-				i++;
+		recentUris.addListener((Change<? extends URI> c) -> {
+			var prefsCurrent = MANAGER.getPreferences();
+			for (int i = 0; i < maxUris; i++) {
+				if (i < recentUris.size())
+					prefsCurrent.put(key + i, recentUris.get(i).toString());
+				else
+					prefsCurrent.put(key + i, "");
 			}
 		});
-		return recentProjects;
+		return recentUris;
 	}
 	
 	/**
@@ -810,8 +838,8 @@ public class PathPrefs {
 	
 	
 	
-	private static IntegerProperty maxUndoLevels = PathPrefs.createPersistentPreference("undoMaxLevels", 10);
-	private static IntegerProperty maxUndoHierarchySize = PathPrefs.createPersistentPreference("undoMaxHierarchySize", 10000);
+	private static final IntegerProperty maxUndoLevels = PathPrefs.createPersistentPreference("undoMaxLevels", 10);
+	private static final IntegerProperty maxUndoHierarchySize = PathPrefs.createPersistentPreference("undoMaxHierarchySize", 10000);
 
 	/**
 	 * The requested maximum number of undo levels that QuPath should support.
@@ -832,35 +860,7 @@ public class PathPrefs {
 	}
 
 	
-	private static ObservableList<URI> recentScripts = createRecentScriptsList(8);
-	
-	private static ObservableList<URI> createRecentScriptsList(int nRecentScripts) {
-		// Try to load the recent scripts
-		ObservableList<URI> recentScripts = FXCollections.observableArrayList();
-		for (int i = 0; i < nRecentScripts; i++) {
-			String project = getUserPreferences().get("recentScript" + i, null);
-			if (project == null || project.length() == 0)
-				break;
-			try {
-				recentScripts.add(GeneralTools.toURI(project));
-			} catch (URISyntaxException e) {
-				logger.warn("Unable to parse URI from " + project, e);
-			}
-		}
-		// Add a listener to keep storing the preferences, as required
-		recentScripts.addListener((Change<? extends URI> c) -> {
-			int i = 0;
-			for (URI project : recentScripts) {
-				getUserPreferences().put("recentScript" + i, project.toString());
-				i++;
-			}
-			while (i < nRecentScripts) {
-				getUserPreferences().put("recentScript" + i, "");
-				i++;
-			}
-		});
-		return recentScripts;
-	}
+	private static final ObservableList<URI> recentScripts = createPersistentUriList("recentScript", 8);
 	
 	/**
 	 * Get a list of the most recent scripts that were opened.
@@ -871,7 +871,7 @@ public class PathPrefs {
 	}
 
 
-	private static BooleanProperty skipProjectUriChecks = createPersistentPreference("Skip checking URIs in the project browser",
+	private static final BooleanProperty skipProjectUriChecks = createPersistentPreference("Skip checking URIs in the project browser",
 			false);
 
 	/**
@@ -909,15 +909,15 @@ public class PathPrefs {
 	}
 	
 	
-	private static DoubleProperty gridStartX = createPersistentPreference("gridStartX", 0.0);
+	private final static DoubleProperty gridStartX = createPersistentPreference("gridStartX", 0.0);
 
-	private static DoubleProperty gridStartY = createPersistentPreference("gridStartY", 0.0);
+	private final static DoubleProperty gridStartY = createPersistentPreference("gridStartY", 0.0);
 	
-	private static DoubleProperty gridSpacingX = createPersistentPreference("gridSpacingX", 250.0);
+	private final static DoubleProperty gridSpacingX = createPersistentPreference("gridSpacingX", 250.0);
 
-	private static DoubleProperty gridSpacingY = createPersistentPreference("gridSpacingY", 250.0);
+	private final static DoubleProperty gridSpacingY = createPersistentPreference("gridSpacingY", 250.0);
 
-	private static BooleanProperty gridScaleMicrons = createPersistentPreference("gridScaleMicrons", true);
+	private final static BooleanProperty gridScaleMicrons = createPersistentPreference("gridScaleMicrons", true);
 
 
 	/**
@@ -960,9 +960,17 @@ public class PathPrefs {
 		return gridScaleMicrons;
 	}
 
+	private final static BooleanProperty showViewerPlaceholderText = createPersistentPreference("showViewerPlaceholderText", true);
+
+	/**
+	 * Property to determine whether placeholder text should be shown when the viewer is empty.
+	 * @return
+	 */
+	public static BooleanProperty showViewerPlaceholderTextProperty() {
+		return showViewerPlaceholderText;
+	}
 	
-	
-	private static DoubleProperty autoBrightnessContrastSaturation = PathPrefs.createPersistentPreference("autoBrightnessContrastSaturationPercentage", 0.1);
+	private final static DoubleProperty autoBrightnessContrastSaturation = PathPrefs.createPersistentPreference("autoBrightnessContrastSaturationPercentage", 0.1);
 
 	/**
 	 * Controls percentage of saturated pixels to apply when automatically setting brightness/contrast.

@@ -144,7 +144,7 @@ public class QuPath {
 		try {
 			pr = cmd.parseArgs(args);
 		} catch (Exception e) {
-			logger.error("An error has occurred, please type -h to display help message.\n" + e.getLocalizedMessage());
+            logger.error("An error has occurred, please type -h to display help message.\n{}", e.getLocalizedMessage());
 			return;
 		}
 
@@ -399,6 +399,9 @@ class ScriptCommand implements Runnable {
 					} finally {
 						imageData.getServer().close();						
 					}
+				}
+				if (save) {
+					project.syncChanges();
 				}
 			} else if (imagePath != null && !imagePath.equals("")) {
 				String path = QuPath.getEncodedPath(imagePath);

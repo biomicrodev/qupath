@@ -10,6 +10,7 @@ import com.bc.zarr.ZarrGroup;
 import loci.formats.gui.AWTImageTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import qupath.lib.common.ThreadTools;
 import qupath.lib.images.servers.ImageServer;
 import qupath.lib.images.servers.ImageServers;
 import qupath.lib.images.servers.TileRequest;
@@ -24,12 +25,14 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Create an OME-Zarr file writer as described by version 0.4 of the specifications of the
@@ -48,22 +51,28 @@ public class OMEZarrWriter implements AutoCloseable {
     private final ImageServer<BufferedImage> server;
     private final Map<Integer, ZarrArray> levelArrays;
     private final ExecutorService executorService;
+    private final Consumer<TileRequest> onTileWritten;
 
     private OMEZarrWriter(Builder builder, String path) throws IOException {
-        TransformedServerBuilder transformedServerBuilder = new TransformedServerBuilder(ImageServers.pyramidalizeTiled(
-                builder.server,
-                getChunkSize(
-                        builder.tileWidth > 0 ? builder.tileWidth : builder.server.getMetadata().getPreferredTileWidth(),
-                        builder.maxNumberOfChunks,
-                        builder.server.getWidth()
-                ),
-                getChunkSize(
-                        builder.tileHeight > 0 ? builder.tileHeight : builder.server.getMetadata().getPreferredTileHeight(),
-                        builder.maxNumberOfChunks,
-                        builder.server.getHeight()
-                ),
-                builder.downsamples.length == 0 ? builder.server.getPreferredDownsamples() : builder.downsamples
-        ));
+        int tileWidth = getChunkSize(
+                builder.tileWidth > 0 ? builder.tileWidth : builder.server.getMetadata().getPreferredTileWidth(),
+                builder.maxNumberOfChunks,
+                builder.server.getWidth()
+        );
+        int tileHeight = getChunkSize(
+                builder.tileHeight > 0 ? builder.tileHeight : builder.server.getMetadata().getPreferredTileHeight(),
+                builder.maxNumberOfChunks,
+                builder.server.getHeight()
+        );
+        double[] downsamples = builder.downsamples.length > 0 ? builder.downsamples : builder.server.getPreferredDownsamples();
+        boolean tileSizeAndDownsamplesUnchanged = tileWidth == builder.server.getMetadata().getPreferredTileWidth() &&
+                tileHeight == builder.server.getMetadata().getPreferredTileHeight() &&
+                Arrays.equals(downsamples, builder.server.getPreferredDownsamples());
+
+        TransformedServerBuilder transformedServerBuilder = new TransformedServerBuilder(tileSizeAndDownsamplesUnchanged ?
+                builder.server :
+                ImageServers.pyramidalizeTiled(builder.server, tileWidth, tileHeight, downsamples)
+        );
         if (builder.zStart != 0 || builder.zEnd != builder.server.nZSlices() || builder.tStart != 0 || builder.tEnd != builder.server.nTimepoints()) {
             transformedServerBuilder.slice(
                     builder.zStart,
@@ -75,7 +84,7 @@ public class OMEZarrWriter implements AutoCloseable {
         if (builder.boundingBox != null) {
             transformedServerBuilder.crop(builder.boundingBox);
         }
-        server = transformedServerBuilder.build();
+        this.server = transformedServerBuilder.build();
 
         OMEZarrAttributesCreator attributes = new OMEZarrAttributesCreator(server.getMetadata());
 
@@ -85,14 +94,18 @@ public class OMEZarrWriter implements AutoCloseable {
         );
 
         OMEXMLCreator.create(server.getMetadata()).ifPresent(omeXML -> createOmeSubGroup(root, path, omeXML));
-        levelArrays = createLevelArrays(
+        this.levelArrays = createLevelArrays(
                 server,
                 root,
                 attributes.getLevelAttributes(),
                 builder.compressor
         );
 
-        executorService = Executors.newFixedThreadPool(builder.numberOfThreads);
+        this.executorService = Executors.newFixedThreadPool(
+                builder.numberOfThreads,
+                ThreadTools.createThreadFactory("zarr_writer_", false)
+        );
+        this.onTileWritten = builder.onTileWritten;
     }
 
     /**
@@ -155,6 +168,9 @@ public class OMEZarrWriter implements AutoCloseable {
             } catch (Exception e) {
                 logger.error("Error when writing tile", e);
             }
+            if (onTileWritten != null) {
+                onTileWritten.accept(tileRequest);
+            }
         });
     }
 
@@ -179,16 +195,17 @@ public class OMEZarrWriter implements AutoCloseable {
         private static final String FILE_EXTENSION = ".ome.zarr";
         private final ImageServer<BufferedImage> server;
         private Compressor compressor = CompressorFactory.createDefaultCompressor();
-        private int numberOfThreads = 12;
+        private int numberOfThreads = ThreadTools.getParallelism();
         private double[] downsamples = new double[0];
-        private int maxNumberOfChunks = 50;
-        private int tileWidth = 512;
-        private int tileHeight = 512;
+        private int maxNumberOfChunks = -1;
+        private int tileWidth = -1;
+        private int tileHeight = -1;
         private ImageRegion boundingBox = null;
         private int zStart = 0;
         private int zEnd;
         private int tStart = 0;
         private int tEnd;
+        private Consumer<TileRequest> onTileWritten = null;
 
         /**
          * Create the builder.
@@ -242,7 +259,7 @@ public class OMEZarrWriter implements AutoCloseable {
 
         /**
          * In Zarr files, data is stored in chunks. This parameter defines the maximum number
-         * of chunks on the x,y, and z dimensions. By default, this value is set to 50.
+         * of chunks on the x,y, and z dimensions. By default, this value is set to -1.
          * <p>
          * Use a negative value to not define any maximum number of chunks.
          *
@@ -256,7 +273,7 @@ public class OMEZarrWriter implements AutoCloseable {
 
         /**
          * In Zarr files, data is stored in chunks. This parameter defines the size
-         * of chunks on the x and y dimensions. By default, these values are set to 512.
+         * of chunks on the x and y dimensions. By default, these values are set to -1.
          * <p>
          * Use a negative value to use the tile width/height of the provided image server.
          * <p>
@@ -272,7 +289,7 @@ public class OMEZarrWriter implements AutoCloseable {
 
         /**
          * In Zarr files, data is stored in chunks. This parameter defines the size
-         * of chunks on the x and y dimensions. By default, these values are set to 512.
+         * of chunks on the x and y dimensions. By default, these values are set to -1.
          * <p>
          * Use a negative value to use the tile width/height of the provided image server.
          * <p>
@@ -325,6 +342,21 @@ public class OMEZarrWriter implements AutoCloseable {
         public Builder timePoints(int tStart, int tEnd) {
             this.tStart = tStart;
             this.tEnd = tEnd;
+            return this;
+        }
+
+        /**
+         * Set a function that will be called each time a {@link TileRequest} is successfully
+         * or unsuccessfully written.
+         * <p>
+         * This function may be called from any thread.
+         *
+         * @param onTileWritten a function that will be called each time a {@link TileRequest} is successfully
+         *                      or unsuccessfully written
+         * @return this builder
+         */
+        public Builder onTileWritten(Consumer<TileRequest> onTileWritten) {
+            this.onTileWritten = onTileWritten;
             return this;
         }
 

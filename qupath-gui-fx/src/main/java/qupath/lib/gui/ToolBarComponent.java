@@ -138,7 +138,7 @@ class ToolBarComponent {
 		nodes.add(createSeparator());
 
 		nodes.add(magLabel);
-		nodes.add(createToggleButton(viewerManagerActions.ZOOM_TO_FIT));
+		nodes.add(createButton(viewerManagerActions.ZOOM_TO_FIT));
 
 		nodes.add(createSeparator());
 
@@ -181,7 +181,7 @@ class ToolBarComponent {
 		btnOverlay.setGraphic(IconFactory.createNode(FontAwesome.Glyph.DESKTOP));
 //		btnOverlay.setGraphic(IconFactory.createNode(FontAwesome.Glyph.TH_LARGE, QuPathGUI.TOOLBAR_ICON_SIZE));
 //		btnOverlay.setGraphic(IconFactory.createFontAwesome('\uf26c', QuPathGUI.TOOLBAR_ICON_SIZE));
-		btnMeasure.setTooltip(new Tooltip(getDescription("viewerMenu")));
+		btnOverlay.setTooltip(new Tooltip(getDescription("viewerMenu")));
 
 		btnOverlay.getItems().addAll(
 				ActionTools.createMenuItem(viewerManagerActions.SHOW_OVERVIEW),
@@ -192,8 +192,7 @@ class ToolBarComponent {
 				ActionTools.createMenuItem(overlayActions.SHOW_GRID),
 				ActionTools.createMenuItem(overlayActions.GRID_SPACING),
 				new SeparatorMenuItem(),
-				ActionTools.createMenuItem(commonActions.INPUT_DISPLAY),
-				ActionTools.createMenuItem(commonActions.MEMORY_MONITOR)
+				ActionTools.createMenuItem(commonActions.INPUT_DISPLAY)
 		);
 		nodes.add(btnOverlay);
 

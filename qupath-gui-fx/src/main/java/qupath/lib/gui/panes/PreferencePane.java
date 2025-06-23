@@ -93,12 +93,13 @@ public class PreferencePane {
 
 	private PropertySheet propSheet;
 	
-	private static LocaleManager localeManager = new LocaleManager(QuPathResources::hasDefaultBundleForLocale);
+	private static final LocaleManager localeManager = new LocaleManager(Locale.US,
+			QuPathResources::hasDefaultBundleForLocale, false);
 	
 	private BorderPane pane;
 
-	private LocaleSnapshot localeSnapshot = new LocaleSnapshot();
-	private StringProperty localeChangedText = QuPathResources.getLocalizedResourceManager().createProperty("Prefs.localeChanged");
+	private final LocaleSnapshot localeSnapshot = new LocaleSnapshot();
+	private final StringProperty localeChangedText = QuPathResources.getLocalizedResourceManager().createProperty("Prefs.localeChanged");
 	private BooleanBinding localeChanged;
 	
 	@SuppressWarnings("javadoc")
@@ -127,7 +128,7 @@ public class PreferencePane {
 				Level.class);
 		var parser = new PropertyItemParser()
 				.setResourceManager(QuPathResources.getLocalizedResourceManager())
-				.setLocaleManager(new LocaleManager(QuPathResources::hasDefaultBundleForLocale));
+				.setLocaleManager(localeManager);
 		return new PropertySheetBuilder()
 				.parser(parser)
 				.editorFactory(factory)
@@ -226,6 +227,9 @@ public class PreferencePane {
 				
 		@BooleanPref("Prefs.General.showStartupMessage")
 		public final BooleanProperty startupMessage = PathPrefs.showStartupMessageProperty();
+
+		@BooleanPref("Prefs.General.showLicenseMessage")
+		public final BooleanProperty licenseMessage = PathPrefs.showLicenseMessageOnStartupProperty();
 
 		@FilePref(value = "Prefs.General.startupScriptPath", extensions = "*.groovy")
 		public final StringProperty startupScriptPath = PathPrefs.startupScriptProperty();
@@ -346,7 +350,10 @@ public class PreferencePane {
 	
 	@PrefCategory("Prefs.Viewer")
 	public static class ViewerPreferences {
-		
+
+		@BooleanPref("Prefs.Viewer.placeholderText")
+		public final BooleanProperty placeholderText = PathPrefs.showViewerPlaceholderTextProperty();
+
 		@ColorPref("Prefs.Viewer.backgroundColor")
 		public final IntegerProperty backgroundColor = PathPrefs.viewerBackgroundColorProperty();
 
